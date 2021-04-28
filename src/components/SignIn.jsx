@@ -1,4 +1,5 @@
 import React from 'react';
+import Avatar from '@material-ui/core/Avatar';
 import Button from '@material-ui/core/Button';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import TextField from '@material-ui/core/TextField';
@@ -6,8 +7,12 @@ import Link from '@material-ui/core/Link';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import Container from '@material-ui/core/Container';
+import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
 import { makeStyles } from '@material-ui/core/styles';
 import { useHistory } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import AuthActions from '../logic/actions/auth_actions';
+import APIUser from '../api/usersApi';
 
 const useStyles = makeStyles((theme) => ({
   paper: {
@@ -22,44 +27,31 @@ const useStyles = makeStyles((theme) => ({
   },
   submit: {
     margin: theme.spacing(3, 0, 2)
+  },
+  avatar: {
+    margin: theme.spacing(1),
+    backgroundColor: theme.palette.secondary.main
   }
 }));
 
-export default function SignIn() {
+const SignIn = () => {
   const classes = useStyles();
   const history = useHistory();
+  const dispatch = useDispatch();
 
-  const retrieveTimelines = (user) => {
-    const id = JSON.parse(user).id;
-    const url =
-      'https://backend-dot-my-maps-cc-a2.ts.r.appspot.com/getTimeline';
-
-    fetch(`${url}?userId=${id}`, { method: 'GET' }).then((res) => {
+  const retrieveUser = (data) => {
+    const body = {
+      email: data.get('email'),
+      password: data.get('password')
+    };
+    APIUser.retrieveUser(body).then((res) => {
       if (res.status === 200) {
-        res.text().then((timelines) => {
-          sessionStorage.setItem('timelines', timelines);
+        res.json().then((r) => {
+          dispatch(AuthActions.setUser(r));
+          history.push('/dashboard');
         });
       }
     });
-  };
-
-  const retrieveUser = (data) => {
-    const url = 'https://backend-dot-my-maps-cc-a2.ts.r.appspot.com/login';
-
-    fetch(
-      `${url}?email=${data.get('email')}&password=${data.get('password')}`,
-      { method: 'GET' }
-    )
-      .then((res) => {
-        if (res.status === 200) {
-          res.text().then((user) => {
-            sessionStorage.setItem('user', user);
-            retrieveTimelines(user);
-            history.push('/maps');
-          });
-        }
-      })
-      .catch((error) => console.log('error', error));
   };
 
   const handleSubmit = (event) => {
@@ -72,8 +64,11 @@ export default function SignIn() {
     <Container component='main' maxWidth='xs'>
       <CssBaseline />
       <div className={classes.paper}>
+        <Avatar className={classes.avatar}>
+          <LockOutlinedIcon />
+        </Avatar>
         <Typography component='h1' variant='h5'>
-          Sign in
+          Connexion
         </Typography>
         <form onSubmit={handleSubmit} className={classes.form} noValidate>
           <TextField
@@ -82,7 +77,7 @@ export default function SignIn() {
             required
             fullWidth
             id='email'
-            label='Email Address'
+            label='Email'
             name='email'
             autoComplete='email'
             autoFocus
@@ -93,7 +88,7 @@ export default function SignIn() {
             required
             fullWidth
             name='password'
-            label='Password'
+            label='Mot de passe'
             type='password'
             id='password'
             autoComplete='current-password'
@@ -105,12 +100,12 @@ export default function SignIn() {
             color='primary'
             className={classes.submit}
           >
-            Sign In
+            Connexion
           </Button>
           <Grid container>
             <Grid item>
-              <Link href='/signUp' variant='body2'>
-                {"Don't have an account? Sign Up"}
+              <Link href='/connexion' variant='body2'>
+                Aucun compte ? Créez-en un
               </Link>
             </Grid>
           </Grid>
@@ -118,4 +113,6 @@ export default function SignIn() {
       </div>
     </Container>
   );
-}
+};
+
+export default SignIn;

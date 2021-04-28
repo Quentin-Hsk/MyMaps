@@ -1,17 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import Avatar from '@material-ui/core/Avatar';
 import Button from '@material-ui/core/Button';
-import CssBaseline from '@material-ui/core/CssBaseline';
 import TextField from '@material-ui/core/TextField';
-import Link from '@material-ui/core/Link';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import Container from '@material-ui/core/Container';
-import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import { makeStyles } from '@material-ui/core/styles';
-import { useHistory } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import AuthActions from '../logic/actions/auth_actions';
 import APIUser from '../api/usersApi';
 
@@ -35,24 +30,25 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function SignUp() {
+const EditProfile = () => {
   const classes = useStyles();
-  const history = useHistory();
+  const user = useSelector((state) => state.Auth.user);
   const dispatch = useDispatch();
 
-  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(user.avatar);
 
   const handleSubmit = useCallback(
     (event) => {
       event.preventDefault();
       const data = new FormData(event.target);
-      const user = {
+      const userForm = {
+        id: user.id,
         avatar: avatarFile,
         username: data.get('username'),
         email: data.get('email'),
         password: data.get('password')
       };
-      APIUser.createUser(user).then((res) => {
+      APIUser.editUser(userForm).then((res) => {
         if (res.status === 200) {
           APIUser.retrieveUser({
             email: data.get('email'),
@@ -61,7 +57,6 @@ export default function SignUp() {
             if (r.status === 200) {
               r.json().then((re) => {
                 dispatch(AuthActions.setUser(re));
-                history.push('/dashboard');
               });
             }
           });
@@ -81,19 +76,16 @@ export default function SignUp() {
   };
 
   return (
-    <Container component='main' maxWidth='xs'>
-      <CssBaseline />
+    <Container maxWidth='xs'>
       <div className={classes.paper}>
-        <Avatar className={classes.avatar}>
-          <LockOutlinedIcon />
-        </Avatar>
         <Typography component='h1' variant='h5'>
-          Créer un compte
+          Modifier les informations
         </Typography>
         <form onSubmit={handleSubmit} className={classes.form} noValidate>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
+                defaultValue={user.username}
                 autoComplete='username'
                 name='username'
                 variant='outlined'
@@ -152,6 +144,7 @@ export default function SignUp() {
             </Grid>
             <Grid item xs={12}>
               <TextField
+                defaultValue={user.email}
                 variant='outlined'
                 required
                 fullWidth
@@ -181,17 +174,12 @@ export default function SignUp() {
             color='primary'
             className={classes.submit}
           >
-            Créer un compte
+            Enregistrer les modifications
           </Button>
-          <Grid container justify='flex-end'>
-            <Grid item>
-              <Link href='/' variant='body2'>
-                Déjà un compte ? Connectez-vous
-              </Link>
-            </Grid>
-          </Grid>
         </form>
       </div>
     </Container>
   );
-}
+};
+
+export default EditProfile;

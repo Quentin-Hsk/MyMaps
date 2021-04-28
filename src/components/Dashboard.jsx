@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import clsx from 'clsx';
 import { makeStyles } from '@material-ui/core/styles';
 import CssBaseline from '@material-ui/core/CssBaseline';
-import { ExpandLess, ExpandMore } from '@material-ui/icons';
+import {
+  AccountCircle,
+  ExpandLess,
+  ExpandMore,
+  Explore
+} from '@material-ui/icons';
 import {
   Drawer,
   AppBar,
@@ -11,22 +16,11 @@ import {
   Typography,
   Divider,
   IconButton,
-  Container,
-  Grid,
   ListItem,
   ListItemIcon,
   ListItemText,
-  Collapse,
-  Input,
-  Button
+  Collapse
 } from '@material-ui/core';
-import {
-  GoogleMap,
-  LoadScript,
-  TrafficLayer,
-  DirectionsRenderer,
-  DirectionsService
-} from '@react-google-maps/api';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import MapIcon from '@material-ui/icons/Map';
 import TrafficIcon from '@material-ui/icons/Traffic';
@@ -34,6 +28,10 @@ import SatelliteIcon from '@material-ui/icons/Satellite';
 import TerrainIcon from '@material-ui/icons/Terrain';
 import TimelineIcon from '@material-ui/icons/Timeline';
 import MenuIcon from '@material-ui/icons/Menu';
+import { useSelector } from 'react-redux';
+import Maps from './Maps';
+import EditProfile from './EditProfile';
+import ListTimelines from './ListTimelines';
 
 const drawerWidth = 240;
 
@@ -119,9 +117,12 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function Dashboard() {
+const Dashboard = () => {
+  const user = useSelector((state) => state.Auth.user);
+
+  const [display, setDisplay] = useState('maps');
   const classes = useStyles();
-  const [open, setOpen] = React.useState(true);
+  const [open, setOpen] = useState(true);
   const handleDrawerOpen = () => {
     setOpen(true);
   };
@@ -129,103 +130,33 @@ export default function Dashboard() {
     setOpen(false);
   };
 
-  const [timelineOpen, setTimeline] = React.useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
-  const [timelines, setTimelines] = React.useState(
-    JSON.parse(sessionStorage.getItem('timelines'))
-  );
+  const [timelines, setTimelines] = useState([]);
 
-  const [traffic, setTraffic] = React.useState(false);
+  const [traffic, setTraffic] = useState(false);
 
-  const [mapType, setMapType] = React.useState('roadmap');
+  const [mapType, setMapType] = useState('roadmap');
 
-  const [stop, setStop] = React.useState(false);
-  const [response, setResponse] = React.useState(null);
-  const directionsCallback = (res) => {
-    if (res !== null && stop === false) {
-      // console.log(res);
-      // console.log(stop);
-      if (res.status === 'OK') {
-        setResponse((prevRes) => {
-          if (prevRes !== res) {
-            return res;
-          }
-        });
-        setStop(true);
-      } else {
-        console.log('response: ', res);
-      }
-    }
-  };
-
-  let originRef;
-  let destRef;
-  const [origin, setOrigin] = React.useState('');
-  const [destination, setDestination] = React.useState('');
-  const buildRoute = () => {
-    if (
-      originRef.value !== '' &&
-      destRef.value !== '' &&
-      (originRef.value !== origin || destRef.value !== destination)
-    ) {
-      setOrigin((prevOrigin) => {
-        if (prevOrigin !== originRef.value) {
-          return originRef.value;
-        }
-        return prevOrigin;
-      });
-      setDestination((prevDest) => {
-        if (prevDest !== destRef.value) {
-          return destRef.value;
-        }
-        return prevDest;
-      });
-      setTimelines((prevTimelines) => {
-        return [
-          ...prevTimelines,
-          { origin: originRef.value, destination: destRef.value }
-        ];
-      });
-      pushTimelineToDatastore(originRef.value, destRef.value);
-      setStop(false);
-    }
-  };
-
-  const pushTimelineToDatastore = (origin, destination) => {
-    const id = JSON.parse(sessionStorage.getItem('user')).id;
-    const url =
-      'https://backend-dot-my-maps-cc-a2.ts.r.appspot.com/addTimeline';
-
-    fetch(`${url}?userId=${id}&origin=${origin}&destination=${destination}`, {
-      method: 'POST'
-    }).catch((error) => console.log('error', error));
-  };
+  const [histoOrigin, setHistoOrigin] = useState();
+  const [histoDest, setHistoDest] = useState();
 
   const displayTimeline = () => {
     const content = timelines.map((elem, index) => {
       const text = `${elem.origin} - ${elem.destination}`;
       return (
-        <ListItem key={index} button>
+        <ListItem key={text} button>
           <ListItemText
             primary={text}
             onClick={() => {
-              originRef.value = timelines[index].origin;
-              destRef.value = timelines[index].destination;
+              setHistoOrigin(timelines[index].origin);
+              setHistoDest(timelines[index].destination);
             }}
           />
         </ListItem>
       );
     });
     return content;
-  };
-
-  const containerStyle = {
-    width: '1280px',
-    height: '720px'
-  };
-  const center = {
-    lat: -37.840935,
-    lng: 144.946457
   };
 
   return (
@@ -255,7 +186,7 @@ export default function Dashboard() {
             noWrap
             className={classes.title}
           >
-            {`Welcome ${JSON.parse(sessionStorage.getItem('user')).firstname}`}
+            {user && `Bonjour ${user.username}`}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -282,7 +213,38 @@ export default function Dashboard() {
         </div>
         <Divider />
         <List>
-          <ListItem button onClick={() => setMapType('roadmap')}>
+          <ListItem
+            button
+            onClick={() => {
+              setDisplay('profil');
+            }}
+          >
+            <ListItemIcon>
+              <AccountCircle />
+            </ListItemIcon>
+            <ListItemText primary='Compte' />
+          </ListItem>
+          <ListItem
+            button
+            onClick={() => {
+              setDisplay('savedTimeline');
+            }}
+          >
+            <ListItemIcon>
+              <Explore />
+            </ListItemIcon>
+            <ListItemText primary='Trajets enregistrés' />
+          </ListItem>
+        </List>
+        <Divider />
+        <List>
+          <ListItem
+            button
+            onClick={() => {
+              setMapType('roadmap');
+              setDisplay('maps');
+            }}
+          >
             <ListItemIcon>
               <MapIcon />
             </ListItemIcon>
@@ -300,20 +262,20 @@ export default function Dashboard() {
             </ListItemIcon>
             <ListItemText primary='Terrain' />
           </ListItem>
-        </List>
-        <Divider />
-        <List>
           <ListItem button onClick={() => setTraffic(!traffic)}>
             <ListItemIcon>
               <TrafficIcon />
             </ListItemIcon>
             <ListItemText primary='Traffic' />
           </ListItem>
-          <ListItem button onClick={() => setTimeline(!timelineOpen)}>
+        </List>
+        <Divider />
+        <List>
+          <ListItem button onClick={() => setTimelineOpen(!timelineOpen)}>
             <ListItemIcon>
               <TimelineIcon />
             </ListItemIcon>
-            <ListItemText primary='Timeline' />
+            <ListItemText primary='Historique' />
             {timelineOpen ? <ExpandLess /> : <ExpandMore />}
           </ListItem>
           <Collapse in={timelineOpen} timeout='auto' unmountOnExit>
@@ -325,53 +287,26 @@ export default function Dashboard() {
       </Drawer>
       <main className={classes.content}>
         <div className={classes.appBarSpacer} />
-        <Container maxWidth='lg' className={classes.container}>
-          <Grid container spacing={4}>
-            <Grid item>
-              <Input
-                id='origin'
-                type='text'
-                placeholder='origin'
-                inputRef={(ref) => (originRef = ref)}
-              />
-              <Input
-                id='destination'
-                type='text'
-                placeholder='destination'
-                inputRef={(ref) => (destRef = ref)}
-              />
-              <Button color='primary' onClick={() => buildRoute()}>
-                Build route
-              </Button>
-            </Grid>
-            <Grid item>
-              <LoadScript googleMapsApiKey='AIzaSyAcYTKWnac-M9UbPIIJkiaAmcgVxTlD4k8'>
-                <GoogleMap
-                  mapTypeId={mapType}
-                  mapContainerStyle={containerStyle}
-                  center={center}
-                  zoom={12}
-                >
-                  {traffic && <TrafficLayer />}
-                  {destination !== '' && origin !== '' && (
-                    <DirectionsService
-                      options={{
-                        destination: destination,
-                        origin: origin,
-                        travelMode: 'DRIVING'
-                      }}
-                      callback={directionsCallback}
-                    />
-                  )}
-                  {response !== null && (
-                    <DirectionsRenderer options={{ directions: response }} />
-                  )}
-                </GoogleMap>
-              </LoadScript>
-            </Grid>
-          </Grid>
-        </Container>
+        {display === 'maps' && (
+          <Maps
+            mapType={mapType}
+            traffic={traffic}
+            setTimelines={setTimelines}
+            histoOrigin={histoOrigin}
+            histoDest={histoDest}
+          />
+        )}
+        {display === 'profil' && <EditProfile />}
+        {display === 'savedTimeline' && (
+          <ListTimelines
+            setDisplay={setDisplay}
+            setHistoDest={setHistoDest}
+            setHistoOrigin={setHistoOrigin}
+          />
+        )}
       </main>
     </div>
   );
-}
+};
+
+export default Dashboard;
